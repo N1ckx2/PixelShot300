@@ -5,7 +5,7 @@ import java.io.*;
 /**
  * Created by Nicholas Vadivelu on 2017-01-06.
  */
-public class Main implements SerialPortEventListener {
+public class Main{
     private SerialPort serialPort;
 
     /** Streams */
@@ -16,9 +16,9 @@ public class Main implements SerialPortEventListener {
     double[] sensorValues = new double[300*300];
     int sensorValIndex = -1;
 
-    public Main() throws Exception {
+    public Main(String com) throws Exception {
         //Open port
-        CommPortIdentifier port = CommPortIdentifier.getPortIdentifier("COM3"); //COM3 for mega, COM4 for UNO
+        CommPortIdentifier port = CommPortIdentifier.getPortIdentifier(com); //COM3 for mega, COM4 for UNO
         CommPort commPort = port.open(this.getClass().getName(), 2000);
 
         serialPort = (SerialPort) commPort; //cast communication port to serial port
@@ -31,45 +31,39 @@ public class Main implements SerialPortEventListener {
         serialOut = serialPort.getOutputStream();
         serialReader = new BufferedReader(new InputStreamReader(serialIn));
 
-        serialPort.addEventListener(this);
-        serialPort.notifyOnDataAvailable(true);
+        //serialPort.notifyOnDataAvailable(true);
 
-        double dir = 0.5; //dir  +0.5 is CW, -0.5 is neg
-        for (int i = 1; i <= 300; i++){ //loops through all the y positions
-            for (int j = 1; j <=300; j++) { //loops through all the x positions
-                String toSend = "";
-                toSend = toSend + (j == 1 ? "0" : Integer.toString((int)(1.5 + dir))); //nema8 movement
-                toSend = toSend + (j == 1 ? "1" : "0"); //nema17 movement
-                toSend = toSend + String.format("%04d", j); //x position
-                toSend = toSend + String.format("%04d", i); //y position
-                toSend = toSend + String.format("%04d", sensorValues[sensorValIndex]*1000); //brightness value
-                try {
-                    serialOut.write(toSend.getBytes());
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-            }
-            dir *= -1;
-        }
-
-        for (int i = 0 ; i < 300; i++){ //rudimentary display to show all the brightness values in a table format
-            for (int j = 0 ; j < 300 ; j ++) {
-                System.out.print(sensorValues[i*300+j] + " ");
-            }
-            System.out.println();
+        //fill up sensor values array
+        for (int i = 0 ; i < sensorValues.length; i++){
+            sensorValues[i] = 0;
         }
     }
-    public static void main (String[] args) throws Exception {
-        new Main();
-    }
 
-    //info sent by Arduino is taken here
-    public void serialEvent(SerialPortEvent e) {
+    public double step(int x, int y, boolean dir) { //true = cw, false = ccw
         try {
             String line = serialReader.readLine(); //read string from serial port
             sensorValues[++sensorValIndex] = Integer.parseInt(line)/1023;
         } catch (IOException ex) {
-            ex.printStackTrace();
+            return -1;
         }
+        double direction = dir ? 0.5 : -0.5;
+        String toSend = "";
+        toSend = toSend + (x == 1 ? "0" : Integer.toString((int)(1.5 + direction))); //nema8 movement
+        toSend = toSend + (y == 1 ? "1" : "0"); //nema17 movement
+        toSend = toSend + String.format("%04d", y); //x position
+        toSend = toSend + String.format("%04d", x); //y position
+        toSend = toSend + String.format("%04d", sensorValues[sensorValIndex]*1000); //brightness value
+        try {
+            serialOut.write(toSend.getBytes());
+        } catch (IOException e1) {
+            return -1;
+        }
+
+        return sensorValues[sensorValIndex];
     }
+    public static void main (String[] args) throws Exception {
+        new GUI();
+    }
+
+    public double[] getSensorValues() {return sensorValues;} //getter method for the sensor values
 }
