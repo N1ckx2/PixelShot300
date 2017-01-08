@@ -1,30 +1,46 @@
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 /**
  * Created by Nicholas Vadivelu on 2017-01-07.
  */
+
 public class GUI extends JFrame implements ActionListener{
     private int width = 800; //the width of the window
     private int height = 600; //the height of the window
+    private int canvasWidth = 500;
+    private int canvasHeight = 500;
+    private int dimension = 100;
     private Main main;
-    private JButton start;
+    private Thread thread;
+    private JButton start, stop;
+    private JLabel posLabel, lumLabel;
+    private JPanel panel, UIPanel;
     private ImageCanvas canvas;
 
     public GUI () throws Exception{
-        //Initialize main
-        main = new Main ("COM3"); //COM3 is the port --> create way to get this from user
 
         //Initialize the components
-        JPanel panel = new JPanel(); //main content pane
-        canvas = new ImageCanvas(300, 300, 300, 300); //fix this
+        panel = new JPanel(new BorderLayout()); //main content pane
+        UIPanel = new JPanel(new FlowLayout());
+        canvas = new ImageCanvas(canvasWidth, canvasHeight, dimension, dimension); //fix this
         start = new JButton("Start");
+        stop = new JButton("Stop");
+        posLabel = new JLabel("Position: (000, 000)");
+        lumLabel = new JLabel("Luminosity: 0.000");
+
+        //Adding adding listener
+        start.addActionListener(this);
+        stop.addActionListener(this);
 
         //Add components to panel
-        panel.add(start);
-        panel.add(canvas);
-
+        UIPanel.add(start);
+        UIPanel.add(posLabel);
+        UIPanel.add(lumLabel);
+        panel.add(UIPanel, BorderLayout.SOUTH);
+        panel.add(canvas, BorderLayout.NORTH);
 
         //Set up JFrame
         pack ();
@@ -35,25 +51,37 @@ public class GUI extends JFrame implements ActionListener{
         setSize (width, height);
         setDefaultCloseOperation (JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo (null); // Center window.
+
+        //Initialize main
+        main = new Main ("COM3", dimension, this); //COM3 is the port --> create way to get this from user
+        thread = new Thread(main);
+    }
+
+    public void updateUI(int i, int j, double temp) {
+        posLabel.setText("Position: (" + String.format("%03d", j+1) + "," + String.format("%03d", i+1) + ")");
+        lumLabel.setText("Luminosity: " + String.format("%.3" + "f", temp));
+        /*
+        posLabel.paintImmediately(posLabel.getVisibleRect());
+        lumLabel.paintImmediately(lumLabel.getVisibleRect());
+        */
+        canvas.updateValue(temp, j, i);
+    }
+
+    public void doneRunning() {
+        canvas.setRepaintAll(true);
+        posLabel.setText("Position: (" + String.format("%03d", dimension) + "," + String.format("%03d", dimension) + ")");
+        repaint();
     }
 
     @Override
     public void actionPerformed (ActionEvent e) {
-        if (e.getSource() == start) { //if the user presses start, run code.
-            start();
-        }
-    }
-
-    public void start() { //captures a full image
-        boolean dir = true; //dir  true is CW, false is CCW
-        for (int i = 1; i <= 300; i++){ //loops through all the y positions
-            for (int j = 1; j <=300; j++) { //loops through all the x positions
-                main.step(j, i, dir);
-                canvas.updateValues(main.getSensorValues());
-                canvas.repaint();
-                repaint();
-            }
-            dir = !dir; //flips direction of the NEMA8 after each horizontal sweep
+        if (e.getActionCommand().equals("Start")) { //if the user presses start, run code.
+            canvas.setRepaintAll(true);
+            thread.start();
+            start.setText("Stop");
+        } else if (e.getActionCommand().equals("Stop")) {
+            main.stop();
+            start.setText("Start");
         }
     }
 }
