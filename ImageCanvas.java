@@ -1,5 +1,8 @@
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 
 /**
  * Created by Nicholas Vadivelu on 2017-01-07.
@@ -49,11 +52,10 @@ public class ImageCanvas extends JPanel { //this panel will be updated live to s
         }
     }
 
-    public void updateValues(double[] sensorValues) { //updates the colour array based on sensor values
+    public void clear() { //updates the colour array based on sensor values
         for (int i = 0; i < xPixels; i++) {
             for (int j = 0; j < yPixels; j++ ){
-                int b = (int)(sensorValues[i*xPixels + j]*255);
-                canvas[i][j] = new Color(b, b, b);
+                canvas[i][j] = new Color(0, 0, 0);
             }
         }
         repaint();
@@ -67,5 +69,30 @@ public class ImageCanvas extends JPanel { //this panel will be updated live to s
         this.repaint();
     }
 
+    public void updateAllValues(double[] sensorValues) {
+        for (int i = 0 ; i < xPixels; i++) {
+            for (int j = 0 ; j < yPixels; j++) {
+                int b = (int) (255*sensorValues[i + j*xPixels]); //CHECK THISS
+                canvas[i][j] = new Color(b, b, b);
+            }
+        }
+    }
+
     public void setRepaintAll(boolean rep) { repaintAll = rep; }
+
+    public void generateJPEG(){
+        // Initialize BufferedImage, assuming Color[][] is already properly populated.
+        BufferedImage bufferedImage = new BufferedImage(canvas.length, canvas[0].length,
+                BufferedImage.TYPE_INT_RGB);
+
+        // Set each pixel of the BufferedImage to the color from the Color[][].
+        for (int x = 0; x < canvas.length; x++) {
+            for (int y = 0; y < canvas[x].length; y++) {
+                bufferedImage.setRGB(x, y, canvas[x][y].getRGB());
+            }
+        }
+
+        File outputfile = new File("C:\\Users\\nick\\OneDrive\\Documents\\Grade 12\\SPH4U0\\Summative\\images\\testImage_" + new java.text.SimpleDateFormat("dd-MM-yyyy HH-mm-ss").format(new java.util.Date()) + ".jpg");
+        try{ImageIO.write(bufferedImage, "jpg", outputfile);} catch (Exception e) {}
+    }
 }

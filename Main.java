@@ -1,6 +1,7 @@
 import gnu.io.*;
 
-import javax.swing.*;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 
 /**
@@ -23,7 +24,6 @@ public class Main implements Runnable{
     int dimension;
 
     public Main(String com, int dim, GUI gui) throws Exception {
-
         dimension = dim;
         sensorValues = new double[dimension*dimension];
         /*
@@ -45,8 +45,18 @@ public class Main implements Runnable{
         */
 
         //fill up sensor values array
+        BufferedImage img = null;
+        try {
+            img = ImageIO.read(new File("C:\\Users\\nick\\OneDrive\\Documents\\Grade 12\\SPH4U0\\Summative\\images\\fisheyeimage" + dimension + ".jpg"));
+        } catch (IOException e) {
+        }
         for (int i = 0 ; i < sensorValues.length; i++){
-            sensorValues[i] = 0;
+            int rgb = img.getRGB(i%dim, i/dim);
+            int r = (rgb >> 16) & 0xFF;
+            int g = (rgb >> 8) & 0xFF;
+            int b = (rgb & 0xFF);
+            double grayscalePixel = (0.21 * r) + (0.71 * g) + (0.07 * b);
+            sensorValues[i] = grayscalePixel/255.0;//1.0*i/sensorValues.length;
         }
 
         //assign GUI values
@@ -55,19 +65,18 @@ public class Main implements Runnable{
     }
 
     public void run() {
-        while (!stop){
-            boolean dir = true; //dir  true is CW, false is CCW
+        if (!stop){
+            boolean dir = true; //dir  tr   ue is CW, false is CCW
             for (int i = 0; i < dimension && !stop; i++) { //loops through all the y positions
                 for (int j = (dir ? 0 : dimension - 1); !stop && (dir ? j < dimension : j >= 0); j += (dir ? 1 : -1)) { //loops through all the x positions
                     double temp = step(j, i, dir);
                     gui.updateUI(i, j, temp);
-                    try {
-                        Thread.sleep(1);
-                    } catch (Exception e) {
-                    }
+                    //try {Thread.sleep(1);} catch (Exception e) {}
                 }
-                dir = !dir; //flips direction of the NEMA8 after each horizontal sweep
+                //dir = !dir; //flips direction of the NEMA8 after each horizontal sweep
             }
+            try {Thread.sleep(1000);} catch (Exception e) {}
+            correctFisheye(1.2, 1);
             gui.doneRunning();
         }
     }
@@ -75,7 +84,8 @@ public class Main implements Runnable{
     public double step(int x, int y, boolean dir) { //true = cw, false = ccw
         if (sensorValIndex == sensorValues.length-1)
             sensorValIndex = -1;
-        sensorValues[++sensorValIndex] = Math.random();
+        //sensorValues[++sensorValIndex] = Math.random();
+        sensorValIndex++;
         return sensorValues[sensorValIndex];
 
         /* Will be used for the legit program
@@ -108,5 +118,35 @@ public class Main implements Runnable{
 
     public void stop() {
         stop = true;
+    }
+
+    public void correctFisheye(double strength, int zoom) {
+        double[] tempValues = new double[dimension*dimension];
+        for (int i = 0 ; i < tempValues.length; i++){
+            tempValues[i] = sensorValues[i];
+        }
+        int halfDim = dimension/2;
+        if (strength == 0) strength = 0.00001; //so don't get divide by zero
+        double correctRadius = Math.sqrt(2*halfDim*halfDim)/strength;
+        for (int x = 0; x < dimension; x++){
+            for (int y = 0; y < dimension; y++){
+                double theta = 0;
+                int newX = x - halfDim;
+                int newY = y - halfDim;
+
+                double distance = Math.sqrt(newX*newX + newY*newY);
+                double r = distance / correctRadius;
+                if (r == 0)
+                    theta = 1;
+                else
+                    theta = Math.atan(r)/r;
+
+                int sourceX = (int) Math.round(halfDim + theta*newX*zoom);
+                int sourceY = (int) Math.round(halfDim + theta*newY*zoom);
+
+                tempValues[x*dimension+y] = sensorValues[sourceX*dimension+sourceY];
+            }
+        }
+        sensorValues = tempValues;
     }
 }
