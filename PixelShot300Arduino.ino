@@ -2,6 +2,9 @@
 //2 December 2017
 //Nicholas Vadivelu
 
+#include <Utility.h>
+#include <TimedAction.h>
+
 //*****************DEFINE ALL THE NECESSARY PINS
 #define SENSOR          0 //sensor
 
@@ -97,34 +100,6 @@ void setup() { //this code runs once at the start
   pinMode(dig32, OUTPUT);
   pinMode(dig33, OUTPUT);
   pinMode(dig34, OUTPUT);
-}
-
-void loop() { //this code loops
-  Serial.println(analogRead(SENSOR)); //reads input from the light senso
-  
-  if (Serial.available()) { //if there is data to be sent to the arduino from serial
-    int maxBuff = 14; //size of buffer for three four-digit displays and two stepper motors
-    int i = 0; //index variable
-    char buff[maxBuff]; //creates a char array to hold input
-    while(Serial.available()){ //while there is more data
-      unsigned char c = Serial.read(); //gets character input
-      buff[i] = c; //stores character in buff
-      if (i++ > maxBuff+1) break; //stops code if index gets too high
-    }
-    turnNEMA8(buff[0]); //turn the motors 
-    turnNEMA17(buff[1]);
-
-    //get numeric values from the character input
-    xPos = (buff[2] - '0')*1000 + (buff[3] - '0')*100 + (buff[4] - '0')*10 + buff[5] - '0';
-    yPos = (buff[6] - '0')*1000 + (buff[7] - '0')*100 + (buff[8] - '0')*10 + buff[9] - '0';
-    lum = (buff[10] - '0')*1000 + (buff[11] - '0')*100 + (buff[12] - '0')*10 + buff[13] - '0';
-
-
-    //display the numbesr
-    displayNumber(xPos, dig11, dig12, dig13, dig14, A_1, B1, C1, D1);
-    displayNumber(yPos, dig21, dig22, dig23, dig24, A_2, B2, C2, D2);
-    displayNumber(lum, dig31, dig32, dig33, dig34, A_3, B3, C3, D3);
-  }
 }
 
 void turnNEMA8 (char dir) {
@@ -435,3 +410,38 @@ void do16Steps(int cnt, boolean forwards){
   }  
 }
 
+
+
+void readAndMove() {
+  Serial.println(analogRead(SENSOR)); //reads input from the light senso
+  
+  if (Serial.available()) { //if there is data to be sent to the arduino from serial
+    int maxBuff = 14; //size of buffer for three four-digit displays and two stepper motors
+    int i = 0; //index variable
+    char buff[maxBuff]; //creates a char array to hold input
+    while(Serial.available()){ //while there is more data
+      unsigned char c = Serial.read(); //gets character input
+      buff[i] = c; //stores character in buff
+      if (i++ > maxBuff+1) break; //stops code if index gets too high
+    }
+    turnNEMA8(buff[0]); //turn the motors 
+    turnNEMA17(buff[1]);
+
+    //get numeric values from the character input
+    xPos = (buff[2] - '0')*1000 + (buff[3] - '0')*100 + (buff[4] - '0')*10 + buff[5] - '0';
+    yPos = (buff[6] - '0')*1000 + (buff[7] - '0')*100 + (buff[8] - '0')*10 + buff[9] - '0';
+    lum = (buff[10] - '0')*1000 + (buff[11] - '0')*100 + (buff[12] - '0')*10 + buff[13] - '0';
+  }
+}
+
+//create a couple timers that will fire repeatedly every x ms
+TimedAction readMoveThread = TimedAction(700,readAndMove);
+
+void loop() { //this code loops
+    readMoveThread.check();
+    
+    //display the numbesr
+    displayNumber(xPos, dig11, dig12, dig13, dig14, A_1, B1, C1, D1);
+    displayNumber(yPos, dig21, dig22, dig23, dig24, A_2, B2, C2, D2);
+    displayNumber(lum, dig31, dig32, dig33, dig34, A_3, B3, C3, D3);
+}
