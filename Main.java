@@ -1,6 +1,8 @@
 import gnu.io.*;
+import org.jfree.ui.RefineryUtilities;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 
@@ -15,7 +17,7 @@ public class Main implements Runnable{
     private OutputStream serialOut;
     private BufferedReader serialReader;
 
-    double[] sensorValues;
+    double[] sensorValues, originalSensorValues;
     int sensorValIndex = -1;
 
     //GUI Elements that need to be updated
@@ -26,6 +28,7 @@ public class Main implements Runnable{
     public Main(String com, int dim, GUI gui) throws Exception {
         dimension = dim;
         sensorValues = new double[dimension*dimension];
+        originalSensorValues = new double[dimension*dimension];
         /*
         //Open port
         CommPortIdentifier port = CommPortIdentifier.getPortIdentifier(com); //COM3 for mega, COM4 for UNO
@@ -57,8 +60,8 @@ public class Main implements Runnable{
             int b = (rgb & 0xFF);
             double grayscalePixel = (0.21 * r) + (0.71 * g) + (0.07 * b);
             sensorValues[i] = grayscalePixel/255.0;//1.0*i/sensorValues.length;
+            originalSensorValues[i] = grayscalePixel/255.0;//1.0*i/sensorValues.length;
         }
-
         //assign GUI values
         this.gui = gui;
 
@@ -71,12 +74,12 @@ public class Main implements Runnable{
                 for (int j = (dir ? 0 : dimension - 1); !stop && (dir ? j < dimension : j >= 0); j += (dir ? 1 : -1)) { //loops through all the x positions
                     double temp = step(j, i, dir);
                     gui.updateUI(i, j, temp);
-                    //try {Thread.sleep(1);} catch (Exception e) {}
+                    try {Thread.sleep(1);} catch (Exception e) {}
                 }
                 //dir = !dir; //flips direction of the NEMA8 after each horizontal sweep
             }
-            try {Thread.sleep(1000);} catch (Exception e) {}
-            correctFisheye(1.2, 1);
+            //try {Thread.sleep(1000);} catch (Exception e) {}
+            correctFisheye(1, 1);
             gui.doneRunning();
         }
     }
@@ -116,11 +119,20 @@ public class Main implements Runnable{
 
     public double[] getSensorValues() {return sensorValues;} //getter method for the sensor values
 
+    public double[] rnSensorValues(double mult) {
+        double[] stuff = new double[sensorValIndex];
+        for (int i = 0 ; i < sensorValIndex ; i++){
+            stuff[i] = sensorValues[i]*mult;
+        }
+        return stuff;
+    }
+
     public void stop() {
         stop = true;
     }
 
-    public void correctFisheye(double strength, int zoom) {
+    public void correctFisheye(double strength, double zoom) {
+        sensorValues = originalSensorValues;
         double[] tempValues = new double[dimension*dimension];
         for (int i = 0 ; i < tempValues.length; i++){
             tempValues[i] = sensorValues[i];
@@ -148,5 +160,18 @@ public class Main implements Runnable{
             }
         }
         sensorValues = tempValues;
+    }
+
+    public Color[][] bayerInterpolation(double[] values){
+        double[][] red = new double[dimension][dimension];
+        double[][] green = new double[dimension][dimension];
+        double[][] blue = new double[dimension][dimension];
+
+        for (int i = 0 ; i < dimension; i++){
+            for (int j = 0 ; j < dimension; j++) {
+
+            }
+        }
+        return null;
     }
 }
